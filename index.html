@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Viáticos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <style>
+        .header {
+            background: linear-gradient(135deg, #007bff, #6c757d);
+            color: #fff;
+            padding: 80px 0;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .header p {
+            font-size: 1.25rem;
+        }
+        .pdf-table {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .pdf-cell {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            flex: 1 1 calc(25% - 10px); /* Ajusta el tamaño de las celdas */
+            box-sizing: border-box;
+            overflow-wrap: break-word; /* Asegura que el texto largo no se desborde */
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .result-card {
+            border: 1px solid #ddd;
+            border-radius: 0.75rem;
+            padding: 20px;
+            background-color: #ffffff;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .form-label {
+            font-weight: bold;
+        }
+        #pdfContent {
+            border: 1px solid #e1e1e1;
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #ffffff;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            overflow-x: auto; /* Añade desplazamiento horizontal si es necesario */
+        }
+        
+        #contenidoPDF {
+            font-family: 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        #contenidoPDF ul {
+            list-style-type: none; /* Elimina los puntos predeterminados de la lista */
+            padding: 0;
+        }
+        
+        #contenidoPDF li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        
+        #contenidoPDF li::before {
+            content: '\2022'; /* Código Unicode para un punto */
+            position: absolute;
+            left: 0;
+            color: #007bff; /* Color moderno para los puntos */
+            font-size: 1.2em;
+            line-height: 1;
+        }
+        
+        
+        .pdf-preview {
+            border: 1px solid #ddd;
+            border-radius: 0.75rem;
+            padding: 20px;
+            background-color: #f8f9fa;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .pdf-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1><i class="fas fa-calculator"></i> Calculadora de Viáticos</h1>
+            <p id="mesPago" class="lead"></p>
+        </div>
+    </header>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10 col-lg-8">
+                <div class="card p-4">
+                    <div class="card-body">
+                        <div class="alert alert-info" role="alert">
+                            <h4 class="alert-heading">Dependencias del Formulario</h4>
+                            <p>Este formulario se basa en el cálculo de viáticos utilizando dos tipos de turnos: 12 horas y 8 horas. Dependiendo de la opción seleccionada, se habilitarán los campos correspondientes para ingresar la cantidad de turnos y otras variables. Además, permite cargar un archivo PDF para comparar los resultados calculados con los datos contenidos en el PDF.</p>
+                            <hr>
+                            <p class="mb-0">Por favor, asegúrese de ingresar toda la información correctamente y cargar el archivo PDF correspondiente para una comparación precisa.</p>
+                        </div>
+                        <form id="viaticosForm">
+                            <div class="mb-3">
+                                <label for="tipoTurno" class="form-label"><i class="fas fa-clock"></i> Tipo de Turno</label>
+                                <select class="form-select" id="tipoTurno" onchange="toggleFormFields()">
+                                    <option value="" disabled selected>Seleccione el tipo de turno</option>
+                                    <option value="12">Turnos de 12 Horas</option>
+                                    <option value="8">Turnos de 8 Horas</option>
+                                </select>
+                            </div>
+
+                            <div id="formulario12Horas" class="hidden">
+                                <div class="mb-3">
+                                    <label for="cantidadTurnosSimple" class="form-label"><i class="fas fa-briefcase"></i> Cantidad de Turnos con Viático Simple</label>
+                                    <input type="number" class="form-control" id="cantidadTurnosSimple" placeholder="Ingrese la cantidad de turnos con viático simple">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cantidadTurnosCompuesto" class="form-label"><i class="fas fa-suitcase-rolling"></i> Cantidad de Turnos con Viático Compuesto</label>
+                                    <input type="number" class="form-control" id="cantidadTurnosCompuesto" placeholder="Ingrese la cantidad de turnos con viático compuesto">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cantidadNocturnos" class="form-label"><i class="fas fa-moon"></i> Cantidad de Turnos Nocturnos</label>
+                                    <input type="number" class="form-control" id="cantidadNocturnos" placeholder="Ingrese la cantidad de turnos nocturnos">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cantidadFeriados" class="form-label"><i class="fas fa-calendar-day"></i> Cantidad de Turnos Feriados</label>
+                                    <input type="number" class="form-control" id="cantidadFeriados" placeholder="Ingrese la cantidad de turnos feriados">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="cantidadDomingos" class="form-label"><i class="fas fa-calendar-week"></i> Cantidad de Turnos en Domingo</label>
+                                    <input type="number" class="form-control" id="cantidadDomingos" placeholder="Ingrese la cantidad de turnos en domingos">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="asistioInstruccion" class="form-label"><i class="fas fa-school"></i> ¿Asistió a Instrucción?</label>
+                                    <select class="form-select" id="asistioInstruccion" onchange="toggleInstruccionField()">
+                                        <option value="no">No</option>
+                                        <option value="si">Sí</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3 hidden" id="instruccionField">
+                                    <label for="cantidadInstruccion" class="form-label"><i class="fas fa-user-graduate"></i> Cantidad de Veces que Asistió a Instrucción</label>
+                                    <input type="number" class="form-control" id="cantidadInstruccion" placeholder="Ingrese la cantidad de veces que asistió a instrucción">
+                                </div>
+                            </div>
+
+                            <div id="formulario8Horas" class="hidden">
+                                <div class="mb-3">
+                                    <label for="cantidadTurnosSimple8h" class="form-label"><i class="fas fa-briefcase"></i> Cantidad de Turnos con Viático Simple</label>
+                                    <input type="number" class="form-control" id="cantidadTurnosSimple8h" placeholder="Ingrese la cantidad de turnos con viático simple">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="asistioInstruccion8h" class="form-label"><i class="fas fa-school"></i> ¿Asistió a Instrucción?</label>
+                                    <select class="form-select" id="asistioInstruccion8h" onchange="toggleInstruccionField8h()">
+                                        <option value="no">No</option>
+                                        <option value="si">Sí</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3 hidden" id="instruccionField8h">
+                                    <label for="cantidadInstruccion8h" class="form-label"><i class="fas fa-user-graduate"></i> Cantidad de Veces que Asistió a Instrucción</label>
+                                    <input type="number" class="form-control" id="cantidadInstruccion8h" placeholder="Ingrese la cantidad de veces que asistió a instrucción">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="pdfFile" class="form-label"><i class="fas fa-file-pdf"></i> Cargar archivo PDF</label>
+                                <input type="file" class="form-control" id="pdfFile" accept=".pdf">
+                            </div>
+                            <button type="button" class="btn btn-primary w-100" onclick="compareData()"><i class="fas fa-calculator"></i> Calcular y Comparar</button>
+                        </form>
+
+                        <div class="mt-4 result-card" id="resultado" style="display: none;">
+                            <h4><i class="fas fa-dollar-sign"></i> Resultado</h4>
+                            <p id="totalViaticos" class="fs-4 fw-bold"></p>
+                        </div>
+                       
+                        <div id="pdfContent" class="pdf-preview hidden">
+                            <h5 class="pdf-header">
+                                <i class="fas fa-file"></i> Contenido del PDF cargado:
+                            </h5>
+                            <div id="contenidoPDF"></div>
+                        </div>
+                        
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        function toggleFormFields() {
+            const tipoTurno = document.getElementById('tipoTurno').value;
+            document.getElementById('formulario12Horas').classList.toggle('hidden', tipoTurno !== '12');
+            document.getElementById('formulario8Horas').classList.toggle('hidden', tipoTurno !== '8');
+        }
+
+        function toggleInstruccionField() {
+            const asistioInstruccion = document.getElementById('asistioInstruccion').value;
+            document.getElementById('instruccionField').classList.toggle('hidden', asistioInstruccion === 'no');
+        }
+
+        function toggleInstruccionField8h() {
+            const asistioInstruccion = document.getElementById('asistioInstruccion8h').value;
+            document.getElementById('instruccionField8h').classList.toggle('hidden', asistioInstruccion === 'no');
+        }
+
+        function calcularViaticos() {
+            const tipoTurno = document.getElementById('tipoTurno').value;
+            let total = 0;
+
+            if (tipoTurno === '12') {
+                const cantidadTurnosSimple = parseFloat(document.getElementById('cantidadTurnosSimple').value) || 0;
+                const cantidadTurnosCompuesto = parseFloat(document.getElementById('cantidadTurnosCompuesto').value) || 0;
+                const cantidadNocturnos = parseFloat(document.getElementById('cantidadNocturnos').value) || 0;
+                const cantidadFeriados = parseFloat(document.getElementById('cantidadFeriados').value) || 0;
+                const cantidadDomingos = parseFloat(document.getElementById('cantidadDomingos').value) || 0;
+                const cantidadInstruccion = parseFloat(document.getElementById('cantidadInstruccion').value) || 0;
+
+                total = (cantidadTurnosSimple * 9000) + (cantidadTurnosCompuesto * 17000) + (cantidadNocturnos * 9000) + (cantidadFeriados * 9000) + (cantidadDomingos * 9000) + (cantidadInstruccion * 9000);
+            } else {
+                const cantidadTurnosSimple8h = parseFloat(document.getElementById('cantidadTurnosSimple8h').value) || 0;
+                const cantidadInstruccion8h = parseFloat(document.getElementById('cantidadInstruccion8h').value) || 0;
+
+                total = (cantidadTurnosSimple8h * 9000) + (cantidadInstruccion8h * 9000);
+            }
+
+            document.getElementById('totalViaticos').textContent = `$${total.toFixed(2)}`;
+            document.getElementById('resultado').style.display = 'block';
+        }
+
+        function compareData() {
+            calcularViaticos();
+            readPDFAndCompare();
+        }
+
+        function readPDFAndCompare() {
+            const fileInput = document.getElementById('pdfFile');
+            if (fileInput.files.length === 0) {
+                alert('Por favor, cargue un archivo PDF.');
+                return;
+            }
+        
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+        
+            reader.onload = function(event) {
+                const pdfData = new Uint8Array(event.target.result);
+                pdfjsLib.getDocument({ data: pdfData }).promise.then(pdf => {
+                    pdf.getPage(1).then(page => {
+                        page.getTextContent().then(textContent => {
+                            const textItems = textContent.items.map(item => item.str);
+        
+                            // Asume que las filas están separadas por saltos de línea
+                            const lines = textItems.join(' ').split('\n');
+                            const lastLines = lines.slice(-5);  // Obtén las últimas 5 filas
+        
+                            const formattedText = formatText(lastLines);
+                            document.getElementById('contenidoPDF').innerHTML = formattedText;
+                            document.getElementById('pdfContent').style.display = 'block';
+                            compararDatos(lastLines.join(' ')); // Ajusta según el formato del texto
+                        });
+                    });
+                });
+            };
+        
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function formatText(textLines) {
+            let formattedText = '<div class="pdf-text-container">';
+            
+            textLines.forEach(line => {
+                formattedText += `<div class="pdf-text-line">${line}</div>`;
+            });
+            
+            formattedText += '</div>';
+            return formattedText;
+        }
+        
+        function compararDatos(pdfText) {
+            const texto = pdfText.toLowerCase();
+            
+            // Extraer datos del texto PDF usando expresiones regulares
+            const viaticoSimple = (document.getElementById('tipoTurno').value === '12') ? (parseFloat(document.getElementById('cantidadTurnosSimple').value) || 0) : (parseFloat(document.getElementById('cantidadTurnosSimple8h').value) || 0);
+            const viaticoCompuesto = (parseFloat(document.getElementById('cantidadTurnosCompuesto').value) || 0);
+            const nocturno = (parseFloat(document.getElementById('cantidadNocturnos').value) || 0);
+            const feriado = (parseFloat(document.getElementById('cantidadFeriados').value) || 0);
+            const domingo = (parseFloat(document.getElementById('cantidadDomingos').value) || 0);
+            const totalEsperado = parseFloat(document.getElementById('totalViaticos').textContent.replace('$', '').replace(',', '')) || 0;
+        
+            // Extraer valores del PDF
+            const viaticoSimplePDF = (texto.match(/viático simple\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+            const viaticoCompuestoPDF = (texto.match(/viático compuesto\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+            const nocturnoPDF = (texto.match(/nocturno\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+            const feriadoPDF = (texto.match(/feriado\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+            const domingoPDF = (texto.match(/domingo\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+            const totalPDF = (texto.match(/total\s*[\d.,]+/i) || [])[0]?.split(/\s*[\d.,]+\s*/)[1]?.replace(',', '') || 0;
+        
+            // Crear filas de tabla para los resultados de la comparación
+            const comparisonRows = `
+                <tr>
+                    <th>Viático Simple</th>
+                    <td>${viaticoSimple}</td>
+                    <td>${viaticoSimplePDF}</td>
+                </tr>
+                <tr>
+                    <th>Viático Compuesto</th>
+                    <td>${viaticoCompuesto}</td>
+                    <td>${viaticoCompuestoPDF}</td>
+                </tr>
+                <tr>
+                    <th>Nocturno</th>
+                    <td>${nocturno}</td>
+                    <td>${nocturnoPDF}</td>
+                </tr>
+                <tr>
+                    <th>Feriado</th>
+                    <td>${feriado}</td>
+                    <td>${feriadoPDF}</td>
+                </tr>
+                <tr>
+                    <th>Domingo</th>
+                    <td>${domingo}</td>
+                    <td>${domingoPDF}</td>
+                </tr>
+                <tr>
+                    <th>Total</th>
+                    <td>${totalEsperado}</td>
+                    <td>${totalPDF}</td>
+                </tr>
+            `;
+        
+            document.getElementById('pdfComparisonTableBody').innerHTML = comparisonRows;
+        
+            // Comparar y mostrar el resultado
+            let mensaje = '';
+            mensaje += `<br>El viático simple ${parseFloat(viaticoSimple) === parseFloat(viaticoSimplePDF) ? 'coincide' : 'no coincide'}.`;
+            mensaje += `<br>El viático compuesto ${parseFloat(viaticoCompuesto) === parseFloat(viaticoCompuestoPDF) ? 'coincide' : 'no coincide'}.`;
+            mensaje += `<br>El viático nocturno ${parseFloat(nocturno) === parseFloat(nocturnoPDF) ? 'coincide' : 'no coincide'}.`;
+            mensaje += `<br>El viático por feriado ${parseFloat(feriado) === parseFloat(feriadoPDF) ? 'coincide' : 'no coincide'}.`;
+            mensaje += `<br>El viático por domingo ${parseFloat(domingo) === parseFloat(domingoPDF) ? 'coincide' : 'no coincide'}.`;
+            mensaje += `<br>El total ${parseFloat(totalEsperado) === parseFloat(totalPDF) ? 'coincide' : 'no coincide'}.`;
+        
+            document.getElementById('resultadoComparacion').innerHTML = mensaje;
+            document.getElementById('comparacionResultado').style.display = 'block';
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentDate = new Date();
+            const options = { month: 'long', year: 'numeric' };
+            const formattedDate = currentDate.toLocaleDateString('es-ES', options);
+            document.getElementById('mesPago').textContent = `Mes de Pago: ${formattedDate}`;
+        });
+    </script>
+</body>
+</html>
